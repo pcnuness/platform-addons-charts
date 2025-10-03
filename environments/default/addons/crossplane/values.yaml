@@ -1,0 +1,19 @@
+---
+crossplane:
+  fullnameOverride: crossplane
+  replicas: 1
+  priorityClassName: system-cluster-critical
+  resources:
+    limits:
+      cpu: 100m
+      memory: 512Mi
+    requests:
+      cpu: 50m
+      memory: 256Mi
+  tolerations:
+    - key: CriticalAddonsOnly
+      operator: Exists
+  # AWS Provider configuration
+  args:
+    - --enable-composition-revisions
+    - --enable-composition-functions

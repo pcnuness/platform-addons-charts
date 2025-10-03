@@ -1,0 +1,23 @@
+---
+# Default EKS Addons configuration
+eks-addons:
+  # Core DNS addon
+  coredns:
+    enabled: true
+    version: "v1.10.1-eksbuild.1"
+    resolveConflicts: OVERWRITE
+  # Kube Proxy addon
+  kubeProxy:
+    enabled: true
+    version: "v1.28.1-eksbuild.1"
+    resolveConflicts: OVERWRITE
+  # VPC CNI addon
+  vpcCni:
+    enabled: true
+    version: "v1.14.1-eksbuild.1"
+    resolveConflicts: OVERWRITE
+  # EBS CSI Driver addon
+  ebsCsiDriver:
+    enabled: true
+    version: "v1.23.0-eksbuild.1"
+    resolveConflicts: OVERWRITE
