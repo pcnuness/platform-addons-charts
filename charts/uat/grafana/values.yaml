@@ -3,7 +3,7 @@ grafana:
   fullnameOverride: grafana
   replicas: 1
   adminUser: admin
-  adminPassword: StrongPassword
+  adminPassword: StrongPasswordDevelop
   priorityClassName: system-cluster-critical
   serviceMonitor:
     enabled: false
