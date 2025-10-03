@@ -1,0 +1,83 @@
+---
+apiVersion: argoproj.io/v1alpha1
+kind: AppProject
+metadata:
+  name: cluster-management
+  namespace: argocd
+  labels:
+    gitops.tier.layer: devops
+  finalizers:
+    - argocd.argoproj.io/resources-finalizer
+spec:
+  description: Manage Resources Cluster-management in EKS Services
+  destinations:
+  - namespace: '*'
+    server: '*'
+  sourceRepos:
+  - '*'
+  clusterResourceWhitelist:
+  - group: '*'
+    kind: '*'
+
+---
+apiVersion: argoproj.io/v1alpha1
+kind: AppProject
+metadata:
+  name: application-management
+  namespace: argocd
+  labels:
+    gitops.tier.layer: devops
+  finalizers:
+    - argocd.argoproj.io/resources-finalizer
+spec:
+  description: Manage Resources application-management in EKS Services
+  destinations:
+  - namespace: '*'
+    server: '*'
+  sourceRepos:
+  - '*'
+  clusterResourceWhitelist:
+  - group: '*'
+    kind: '*'
+
+---
+apiVersion: argoproj.io/v1alpha1
+kind: AppProject
+metadata:
+  name: monitoring
+  namespace: argocd
+  labels:
+    gitops.tier.layer: devops
+  finalizers:
+    - argocd.argoproj.io/resources-finalizer
+spec:
+  description: Manage Resources Monitoring in EKS Services
+  destinations:
+  - namespace: '*'
+    server: '*'
+  sourceRepos:
+  - '*'
+  clusterResourceWhitelist:
+  - group: '*'
+    kind: '*'
+
+---
+apiVersion: argoproj.io/v1alpha1
+kind: AppProject
+metadata:
+  name: autoscaling
+  namespace: argocd
+  labels:
+    gitops.tier.layer: devops
+  finalizers:
+    - argocd.argoproj.io/resources-finalizer
+spec:
+  description: Manage Resources Autoscaling in EKS Services
+  destinations:
+  - namespace: '*'
+    server: '*'
+  sourceRepos:
+  - '*'
+  clusterResourceWhitelist:
+  - group: '*'
+    kind: '*'

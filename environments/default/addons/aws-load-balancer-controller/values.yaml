@@ -1,0 +1,5 @@
+---
+replicaCount: 3
+revisionHistoryLimit: 10
+tolerations: []
+affinity: {}

@@ -1,0 +1,239 @@
+name: 'ArgoCD Cluster Registration Pipeline'
+description: "Automated ArgoCD setup and Kubernetes cluster registration for GitOps repositories"
+
+on:
+  workflow_dispatch:
+    inputs:
+      gitopsCluster:
+        description: 'EKS Cluster Name'
+        required: true
+        type: string
+      gitopsURL:
+        description: 'ArgoCD Server URL (without https://)'
+        required: true
+        type: string
+      gitopsRepoCluster:
+        description: 'GitOps Repository URL'
+        required: true
+        type: string
+      environment:
+        description: 'Environment Label'
+        required: false
+        type: choice
+        default: 'develop'
+        options:
+          - develop
+          - staging
+          - production
+      aws_region:
+        description: 'AWS Region'
+        required: false
+        type: string
+        default: 'us-east-1'
+
+env:
+  AWS_REGION: ${{ inputs.aws_region }}
+  ARGOCD_VERSION: 'v2.9.3'
+
+jobs:
+  setup-argocd-cluster:
+    name: 'Setup ArgoCD and Register Cluster'
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+          mask-aws-account-id: false
+
+      - name: Verify AWS connectivity
+        run: |
+          echo "🔍 Verifying AWS connectivity..."
+          aws sts get-caller-identity
+          
+          echo "🔍 Checking EKS cluster existence..."
+          aws eks describe-cluster --name ${{ inputs.gitopsCluster }} --region ${{ env.AWS_REGION }}
+          echo "✅ EKS cluster found"
+
+      - name: Install and verify tools
+        run: |
+          echo "📦 Installing ArgoCD CLI..."
+          sudo curl -sSL -o /usr/local/bin/argocd \
+            https://github.com/argoproj/argo-cd/releases/download/${{ env.ARGOCD_VERSION }}/argocd-linux-amd64
+          sudo chmod +x /usr/local/bin/argocd
+          
+          echo "📦 Installing kubectl..."
+          sudo curl -sSL -o /usr/local/bin/kubectl \
+            "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"
+          sudo chmod +x /usr/local/bin/kubectl
+          
+          echo "🔍 Verifying tool versions..."
+          argocd version --client
+          kubectl version --client
+
+      - name: Configure Kubernetes access
+        run: |
+          echo "⚙️ Updating kubeconfig..."
+          aws eks update-kubeconfig \
+            --region ${{ env.AWS_REGION }} \
+            --name ${{ inputs.gitopsCluster }} \
+            --alias ${{ inputs.gitopsCluster }}
+          
+          echo "🔍 Testing cluster connectivity..."
+          kubectl cluster-info
+          kubectl get nodes --no-headers | wc -l | xargs echo "Nodes available:"
+
+      - name: Login to ArgoCD
+        env:
+          ARGOCD_PASSWORD: ${{ secrets.ARGOCD_PWD }}
+        run: |
+          echo "🔐 Logging into ArgoCD..."
+          
+          # Construct proper ArgoCD URL
+          ARGOCD_SERVER="${{ inputs.gitopsURL }}"
+          echo "ArgoCD Server: $ARGOCD_SERVER"
+          
+          # Test ArgoCD server connectivity first
+          echo "🔍 Testing ArgoCD server connectivity..."
+          if curl -k -s --connect-timeout 10 "$ARGOCD_SERVER/healthz" >/dev/null 2>&1; then
+            echo "✅ ArgoCD server is responding"
+          else
+            echo "⚠️ ArgoCD server connectivity test failed, but continuing..."
+          fi
+          
+          # Login with retry mechanism
+          for attempt in {1..3}; do
+            echo "Attempt $attempt: Logging into $ARGOCD_SERVER"
+            if argocd login "$ARGOCD_SERVER" \
+              --username admin \
+              --password "$ARGOCD_PASSWORD" \
+              --insecure \
+              --grpc-web; then
+              echo "✅ Successfully logged into ArgoCD"
+              break
+            else
+              echo "⚠️ Login attempt $attempt failed, retrying..."
+              sleep 5
+            fi
+            
+            if [ $attempt -eq 3 ]; then
+              echo "❌ Failed to login to ArgoCD after 3 attempts"
+              echo "Debug information:"
+              echo "- Server: $ARGOCD_SERVER"
+              echo "- Username: admin"
+              echo "- Using --insecure and --grpc-web flags"
+              exit 1
+            fi
+          done
+
+      - name: Register cluster in ArgoCD
+        run: |
+          echo "🎯 Registering cluster in ArgoCD..."
+          
+          # Get AWS Account ID and construct cluster ARN
+          ACCOUNT_ID=$(aws sts get-caller-identity --query "Account" --output text)
+          CLUSTER_ARN="arn:aws:eks:${{ env.AWS_REGION }}:${ACCOUNT_ID}:cluster/${{ inputs.gitopsCluster }}"
+          
+          echo "📋 Cluster details:"
+          echo "  - Name: ${{ inputs.gitopsCluster }}"
+          echo "  - ARN: ${CLUSTER_ARN}"
+          echo "  - Environment: ${{ inputs.environment }}"
+          
+          # Check current kubeconfig contexts
+          echo "🔍 Available kubeconfig contexts:"
+          kubectl config get-contexts
+          
+          # Get the current context name (which should match our cluster)
+          CURRENT_CONTEXT=$(kubectl config current-context)
+          echo "Current context: $CURRENT_CONTEXT"
+          
+          # Check if cluster is already registered (using correct output format)
+          echo "🔍 Checking existing ArgoCD clusters..."
+          EXISTING_CLUSTERS=$(argocd cluster list -o wide | grep -v "SERVER" | awk '{print $2}' || echo "")
+          
+          if echo "$EXISTING_CLUSTERS" | grep -q "${{ inputs.gitopsCluster }}"; then
+            echo "⚠️ Cluster already registered, updating configuration..."
+            argocd cluster set "$CURRENT_CONTEXT" \
+              --name ${{ inputs.gitopsCluster }} \
+              --label environment=${{ inputs.environment }} \
+              --label managed-by=github-actions \
+              --label cluster-name=${{ inputs.gitopsCluster }} \
+              --annotation addons_repo_revision=${{ inputs.environment }} \
+              --annotation addons_repo_url=${{ inputs.gitopsRepoCluster }} \
+              --annotation last_updated="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          else
+            echo "➕ Adding new cluster initial..."
+            argocd cluster add "$CURRENT_CONTEXT" \
+              --name ${{ inputs.gitopsCluster }} \
+              --label environment=${{ inputs.environment }} \
+              --label managed-by=github-actions \
+              --label cluster-name=${{ inputs.gitopsCluster }} \
+              --annotation addons_repo_revision=${{ inputs.environment }} \
+              --annotation addons_repo_url=${{ inputs.gitopsRepoCluster }} \
+              --annotation created_at="$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+              --yes
+          fi
+          
+          echo "✅ Cluster registration completed"
+
+      - name: Deploy GitOps Root Application
+        run: |
+          echo "🚀 Deploying GitOps root application..."
+          
+          # Verify bootstrap file exists
+          if [ ! -f "./bootstraps/gitops-root.yaml" ]; then
+            echo "❌ Bootstrap file './bootstraps/gitops-root.yaml' not found"
+            echo "Available files in ./bootstraps/:"
+            ls -la ./bootstraps/ || echo "Directory ./bootstraps/ does not exist"
+            exit 1
+          fi
+          
+          # Apply the bootstrap configuration
+          echo "📦 Applying bootstrap configuration..."
+          kubectl apply -f ./bootstraps/gitops-root.yaml
+          
+          echo "✅ GitOps root application deployed successfully"
+
+      - name: Verify deployment
+        run: |
+          echo "🔍 Verifying ArgoCD cluster registration..."
+          argocd cluster list
+          
+          echo "🔍 Checking applied resources..."
+          kubectl get applications -A || echo "No applications found yet"
+          
+          echo "🔍 Checking ArgoCD applications..."
+          argocd app list || echo "No ArgoCD applications found yet"
+          
+          echo "✅ Deployment verification completed"
+
+      - name: Display summary
+        run: |
+          echo "📊 Deployment Summary:"
+          echo "===================="
+          echo "✅ Cluster: ${{ inputs.gitopsCluster }}"
+          echo "✅ ArgoCD: https://${{ inputs.gitopsURL }}"
+          echo "✅ Repository: ${{ inputs.gitopsRepoCluster }}"
+          echo "✅ Environment: ${{ inputs.environment }}"
+          echo "✅ Region: ${{ env.AWS_REGION }}"
+          echo ""
+          echo "🎯 Next Steps:"
+          echo "1. Access ArgoCD UI: https://${{ inputs.gitopsURL }}"
+          echo "2. Verify cluster registration in ArgoCD"
+          echo "3. Check GitOps applications deployment"
+          echo "4. Monitor cluster health and sync status"
+
+      - name: Cleanup on failure
+        if: failure()
+        run: |
+          echo "🧹 Cleaning up on failure..."
+          argocd logout || true
+          echo "Cleanup completed"

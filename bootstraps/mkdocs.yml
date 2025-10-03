@@ -1,0 +1,8 @@
+site_name: "platform-addons-charts"
+site_description: "pcnuness"
+
+nav:
+  - Introduction: index.md
+
+plugins:
+  - techdocs-core
