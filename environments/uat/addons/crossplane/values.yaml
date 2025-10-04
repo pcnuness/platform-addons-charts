@@ -1,0 +1,19 @@
+---
+crossplane:
+  fullnameOverride: crossplane
+  replicas: 2
+  priorityClassName: system-cluster-critical
+  resources:
+    limits:
+      cpu: 200m
+      memory: 1Gi
+    requests:
+      cpu: 100m
+      memory: 512Mi
+  tolerations:
+    - key: CriticalAddonsOnly
+      operator: Exists
+  # AWS Provider configuration for UAT environment
+  args:
+    - --enable-composition-revisions
+    - --enable-composition-functions
