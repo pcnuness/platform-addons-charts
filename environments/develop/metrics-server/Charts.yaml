@@ -1,7 +1,7 @@
 ---
 apiVersion: v2
 name: metrics-server
-description: A helm chart for an app
+description: A helm chart for metrics-server
 type: application
 version: 0.1.0
 dependencies:

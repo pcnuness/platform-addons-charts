@@ -1,16 +1,16 @@
 ---
 metrics-server:
   fullnameOverride: metrics-server
-  replicas: 2
+  replicas: 3
   priorityClassName: system-cluster-critical
   updateStrategy:
     type: RollingUpdate
     rollingUpdate:
       maxUnavailable: 1
   metrics:
-    enabled: false
+    enabled: true
   serviceMonitor:
-    enabled: false
+    enabled: true
     interval: 5m
     scrapeTimeout: 30s
   tolerations:
@@ -20,8 +20,8 @@ metrics-server:
     - --kubelet-insecure-tls
   resources:
     limits:
-      cpu: 100m
-      memory: 200Mi
+      cpu: 500m
+      memory: 512Mi
     requests:
-      cpu: 50m
-      memory: 100Mi
+      cpu: 200m
+      memory: 256Mi
