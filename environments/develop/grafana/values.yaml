@@ -1,0 +1,21 @@
+---
+grafana:
+  fullnameOverride: grafana
+  replicas: 2
+  adminUser: admin
+  adminPassword: StrongPasswordUAT
+  priorityClassName: system-cluster-critical
+  serviceMonitor:
+    enabled: true
+    interval: 5m
+    scrapeTimeout: 30s
+  tolerations:
+    - key: CriticalAddonsOnly
+      operator: Exists
+  resources:
+    limits:
+      cpu: 200m
+      memory: 512Mi
+    requests:
+      cpu: 100m
+      memory: 256Mi

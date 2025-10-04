@@ -1,0 +1,10 @@
+---
+apiVersion: v2
+name: eks-addons
+description: A helm chart for AWS EKS Addons management
+type: application
+version: 0.1.0
+dependencies:
+  - name: eks-addons
+    version: 1.0.0
+    repository: https://aws.github.io/eks-charts

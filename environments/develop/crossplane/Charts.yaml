@@ -1,0 +1,10 @@
+---
+apiVersion: v2
+name: crossplane
+description: A helm chart for Crossplane Infrastructure as Code
+type: application
+version: 0.1.0
+dependencies:
+  - name: crossplane
+    version: 1.15.3
+    repository: https://charts.crossplane.io/stable
