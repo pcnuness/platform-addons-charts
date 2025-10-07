@@ -1,7 +1,7 @@
 ---
 metrics-server:
   fullnameOverride: metrics-server-charts-develop
-  replicas: 2
+  replicas: 3
   priorityClassName: system-cluster-critical
   updateStrategy:
     type: RollingUpdate
