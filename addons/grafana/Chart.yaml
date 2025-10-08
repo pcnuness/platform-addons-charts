@@ -4,6 +4,7 @@ name: grafana
 description: A helm chart for Grafana monitoring
 type: application
 version: 0.1.0
+appVersion: "10.0.0"
 dependencies:
   - name: grafana
     version: 10.0.0

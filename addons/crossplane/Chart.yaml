@@ -4,6 +4,7 @@ name: crossplane
 description: A helm chart for Crossplane Infrastructure as Code
 type: application
 version: 0.1.0
+appVersion: "1.15.3"
 dependencies:
   - name: crossplane
     version: 1.15.3

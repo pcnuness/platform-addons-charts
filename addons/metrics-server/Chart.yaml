@@ -4,6 +4,7 @@ name: metrics-server
 description: A helm chart for metrics-server
 type: application
 version: 0.1.0
+appVersion: "3.12.2"
 dependencies:
   - name: metrics-server
     version: 3.12.2

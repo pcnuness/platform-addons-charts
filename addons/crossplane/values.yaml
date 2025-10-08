@@ -1,0 +1,21 @@
+---
+# Default values for crossplane
+# These are base values that can be overridden per cluster
+crossplane:
+  fullnameOverride: crossplane
+  replicas: 1
+  priorityClassName: system-cluster-critical
+  resourcesCrossplane:
+    limits:
+      cpu: 200m
+      memory: 256Mi
+    requests:
+      cpu: 100m
+      memory: 128Mi
+  resourcesRBACManager:
+    limits:
+      cpu: 100m
+      memory: 128Mi
+    requests:
+      cpu: 50m
+      memory: 64Mi

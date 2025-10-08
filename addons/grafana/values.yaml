@@ -1,9 +1,12 @@
 ---
+# Default values for grafana
+# These are base values that can be overridden per cluster
 grafana:
   fullnameOverride: grafana
   replicas: 1
   adminUser: admin
-  adminPassword: StrongPasswordDevelop
+  # adminPassword should be overridden per cluster
+  adminPassword: ChangeMe
   priorityClassName: system-cluster-critical
   serviceMonitor:
     enabled: false
@@ -14,8 +17,8 @@ grafana:
       operator: Exists
   resources:
     limits:
-      cpu: 100m
-      memory: 200Mi
+      cpu: 200m
+      memory: 256Mi
     requests:
-      cpu: 50m
-      memory: 100Mi
+      cpu: 100m
+      memory: 128Mi
